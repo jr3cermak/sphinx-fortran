@@ -286,8 +286,10 @@ class FortranDocFieldTransformer(DocFieldTransformer):
         :Returns: ``name, shape, type, list of attributes``.
             if no shape is specified, it is set to ``None``,
         """
+        print("[debug:fortran_domain] %s" % (fieldname))
         m = re_fieldname_match(fieldname.strip())
         if not m:
+            import pdb; pdb.set_trace()
             raise ValueError(
                 'Wrong field (%s). It must have at least one parameter name and one argument' %
                 fieldname)
@@ -697,12 +699,18 @@ class FortranObject(ObjectDescription):
             self.state.document.note_explicit_target(signode)
             objects = self.env.domaindata['f']['objects']
             if fullname in objects:
-                self.env.warn(
-                    self.env.docname,
+                # TODO: warnings fail to be sent, no such object
+                print("WARNING:", self.env.docname,
                     'duplicate object description of %s, ' % fullname +
                     'other instance in ' +
                     self.env.doc2path(objects[fullname][0]),
                     self.lineno)
+                #self.warn(
+                #    self.env.docname,
+                #    'duplicate object description of %s, ' % fullname +
+                #    'other instance in ' +
+                #    self.env.doc2path(objects[fullname][0]),
+                #    self.lineno)
             objects[fullname] = (self.env.docname, self.objtype)
         indextext = self.get_index_text(modname, fullname)
         if indextext:
@@ -811,6 +819,7 @@ class WithFortranDocFieldTransformer(object):
             # needed for association of version{added,changed} directives
             self.env.temp_data['object'] = self.names[0]
         self.before_content()
+        #import pdb; pdb.set_trace()
         self.state.nested_parse(self.content, self.content_offset, contentnode)
         FortranDocFieldTransformer(
             self,
@@ -1088,8 +1097,10 @@ class FortranModuleIndex(Index):
         ignores = self.domain.env.config['modindex_common_prefix']
         ignores = sorted(ignores, key=len, reverse=True)
         # list of all modules, sorted by module name
+        # Allow case sensitive names
         modules = sorted(six.iteritems(self.domain.data['modules']),
-                         key=lambda x: x[0].lower())
+                         #key=lambda x: x[0].lower())
+                         key=lambda x: x[0])
         # sort out collapsable modules
         prev_modname = ''
         num_toplevels = 0
@@ -1109,7 +1120,9 @@ class FortranModuleIndex(Index):
             if not modname:
                 modname, stripped = stripped, ''
 
-            entries = content.setdefault(modname[0].lower(), [])
+            # Allow case sensitive names
+            #entries = content.setdefault(modname[0].lower(), [])
+            entries = content.setdefault(modname[0], [])
 
             package = modname.split(f_sep)[0]
             if package != modname:
@@ -1265,11 +1278,17 @@ class FortranDomain(Domain):
         if not matches:
             return None
         elif len(matches) > 1:
-            env.warn(fromdocname,
+            # TODO: warnings fail to be sent, no such object
+            print("WARNING:", fromdocname,
                      'more than one target found for cross-reference '
                      '%r: %s' % (target,
                                  ', '.join(match[0] for match in matches)),
                      node.line)
+            #self.warn(fromdocname,
+            #         'more than one target found for cross-reference '
+            #         '%r: %s' % (target,
+            #                     ', '.join(match[0] for match in matches)),
+            #         node.line)
         name, obj = matches[0]
 
         if obj[1] == 'module':

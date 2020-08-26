@@ -39,7 +39,7 @@ if __name__ == '__main__':
     # Lauch setup
     setup(name='sphinx-fortran',
         version=version,
-        date=date,
+        #date=date,
         description=description,
         long_description=long_description,
         author=author,
