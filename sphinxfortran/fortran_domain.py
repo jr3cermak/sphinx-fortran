@@ -286,10 +286,11 @@ class FortranDocFieldTransformer(DocFieldTransformer):
         :Returns: ``name, shape, type, list of attributes``.
             if no shape is specified, it is set to ``None``,
         """
-        print("[debug:fortran_domain] %s" % (fieldname))
+        #import pdb; pdb.set_trace()
+        #print("[debug:fortran_domain] %s" % (fieldname))
         m = re_fieldname_match(fieldname.strip())
         if not m:
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
             raise ValueError(
                 'Wrong field (%s). It must have at least one parameter name and one argument' %
                 fieldname)
