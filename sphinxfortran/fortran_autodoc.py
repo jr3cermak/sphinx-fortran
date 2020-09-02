@@ -181,6 +181,8 @@ class F90toRst(object):
         self.variables = OrderedDict()
         self.programs = OrderedDict()
 
+        import pdb; pdb.set_trace()
+
         # Loop on all blocks and subblocks
         for block in self.crack:
 
@@ -281,7 +283,7 @@ class F90toRst(object):
                 block['vardescsearch'] = lambda x: None
 
     def build_callfrom_index(self):
-        """For each function, index which function call it"""
+        """For each function, index which functions call it"""
         for bfunc in list(self.routines.values()):
             bfunc['callfrom'] = []
             for bfuncall in list(self.routines.values()) + \

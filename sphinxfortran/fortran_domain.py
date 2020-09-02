@@ -252,6 +252,7 @@ class FortranDocFieldTransformer(DocFieldTransformer):
 
     def __init__(self, directive, modname=None, typename=None):
         self.domain = directive.domain
+        #import pdb; pdb.set_trace()
         if '_doc_field_type_map' not in directive.__class__.__dict__:
             directive.__class__._doc_field_type_map = \
                 self.preprocess_fieldtypes(directive.__class__.doc_field_types)
@@ -416,15 +417,28 @@ class FortranDocFieldTransformer(DocFieldTransformer):
 
 # REs for Fortran signatures
 f_sep = '/'
+
+# original
+#f_sig_re = re.compile(
+#    r'''^ (\w+(?:[^%%%(f_sep)s]%(f_sep)s\w+))? \s*          # type
+#          (\b(?:subroutine|function))?  \s*             # objtype
+#          (\b\w+%(f_sep)s)?              # module name
+#          (\b\w+%%)?              # type name
+#          (\b\w+)  \s*             # thing name
+#          (?: \((.*)\))?           # optional: arguments
+#           $                   # and nothing more
+#          ''' % dict(f_sep=f_sep), re.VERBOSE + re.I)
+
+# Angus
 f_sig_re = re.compile(
-    r'''^ (\w+(?:[^%%%(f_sep)s]%(f_sep)s\w+))? \s*          # type
-          (\b(?:subroutine|function))?  \s*             # objtype
-          (\b\w+%(f_sep)s)?              # module name
-          (\b\w+%%)?              # type name
-          (\b\w+)  \s*             # thing name
-          (?: \((.*)\))?           # optional: arguments
-           $                   # and nothing more
-          ''' % dict(f_sep=f_sep), re.VERBOSE + re.I)
+    r'''^ (\S+)??                      \s* # [type]
+          (\b(?:subroutine|function))? \s* # [objtype]
+          (\b\w+%(f_sep)s)?                # [module name]
+          (\b\w+%%)?                       # [type name]
+          (\b\w+)                      \s* # thing name
+          (?:\(([^()]*)\))?                # [arguments]
+           $
+    ''' % dict(f_sep=f_sep), re.VERBOSE + re.I)
 
 
 # Directives
@@ -578,6 +592,17 @@ class FortranObject(ObjectDescription):
         """
         return False
 
+    def handle_signature_passtwo(self):
+        """
+        The functionhandle_signature has a hairy regluar expression.  If
+        that fails, try again here.
+        """
+        #import pdb; pdb.set_trace()
+
+        ftype, objtype, modname, typename, name, arglist = (None, None, None, None, None, None)
+
+        return (ftype, objtype, modname, typename, name, arglist)
+
     def handle_signature(self, sig, signode):
         """
         Transform a Fortran signature into RST nodes.
@@ -587,12 +612,32 @@ class FortranObject(ObjectDescription):
         * it is stripped from the displayed name if present
         * it is added to the full name (return value) if not present
         """
+        # subroutine nodes are failing here
+        if self.env.app.verbosity > 0:
+            #if sig.find('function eos_domain') >= 0:
+            #    sig = "integer, dimension(2) function eos_domain(HI, halo)"
+            print("[fd] sig(%s)" % (sig))
+
+        # 1st try: use developed regex
         m = f_sig_re.match(sig)
-        if m is None:
-            raise ValueError
-        ftype, objtype, modname, typename, name, arglist = m.groups()
+        if m is not None:
+            ftype, objtype, modname, typename, name, arglist = m.groups()
+        else:
+            # If parsing failed above, try again
+            ftype, objtype, modname, typename, name, arglist = self.handle_signature_passtwo()
+            if typename is None:
+                raise ValueError
+
         if not typename:
             typename = ""
+
+        if self.env.app.verbosity > 0:
+            print("[fd] ftype(%s) objtype(%s) modname(%s) typename(%s) name(%s) arglist(%s)" %
+                    (ftype, objtype, modname, typename, name, arglist))
+
+        if sig.find('ale_getcoordinateunits') >=0:
+            #import pdb; pdb.set_trace()
+            pass
 
         # determine module, type, shape and attributes
         modname = (modname and modname[:-1]) or self.options.get(
@@ -645,6 +690,8 @@ class FortranObject(ObjectDescription):
         # Add remaining
         self.add_shape_and_attrs(signode, modname, ftype, shape, attrs)
 
+        if self.env.app.verbosity > 0:
+            print("[fd] fullname(%s) ftype(%s)" % (fullname,ftype))
         return fullname, ftype
 
     def add_shape_and_attrs(self, signode, modname, ftype, shape, attrs):
@@ -685,11 +732,14 @@ class FortranObject(ObjectDescription):
             signode += nodes.emphasis(']', ']')
 
     def add_target_and_index(self, name, sig, signode):
+        #import pdb; pdb.set_trace()
+        #if sig.find('eos_domain')>=0:
+        #    import pdb; pdb.set_trace()
         # modname = self.options.get(
-            # 'module', self.env.temp_data.get('f:module'))
+        #     'module', self.env.temp_data.get('f:module'))
         modname = signode.get(
             'module', self.env.temp_data.get('f:module'))
-#        fullname = (modname and modname + '/' or '') + name[0]
+        #fullname = (modname and modname + '/' or '') + name[0]
         fullname = 'f' + f_sep + name[0]
 
         # note target
@@ -767,10 +817,18 @@ class FortranSpecial(object):
         return self.objtype + ' '
 
 
+# MOM6: active
+# This is called from docutils
 class WithFortranDocFieldTransformer(object):
     def run(self):
         """Same as :meth:`sphinx.directives.ObjectDescription`
         but using :class:`FortranDocFieldTransformer`"""
+
+        blk = self.block_text.split('\n')[0]
+        if self.env.app.verbosity > 0:
+            print("[fd] run(%s)" % (self.block_text.split('\n')[0]))
+            #import pdb; pdb.set_trace()
+
         if ':' in self.name:
             self.domain, self.objtype = self.name.split(':', 1)
         else:
@@ -810,6 +868,8 @@ class WithFortranDocFieldTransformer(object):
                 # only add target and index entry if this is the first
                 # description of the object with this name in this desc block
                 self.names.append(name)
+                if self.env.app.verbosity > 0:
+                    print("[fd] name(%s) sig(%s) signode(%s)" % (name, sig, signode))
                 self.add_target_and_index(name, sig, signode)
 
         modname = signode.get('module')
@@ -1215,6 +1275,10 @@ class FortranDomain(Domain):
 
             - **searchorder**, optional: Start using relative search
         """
+        # debug if target='mom_state_is_synchronized'
+        if name == 'mom_state_is_synchronized':
+            #import pdb; pdb.set_trace()
+            pass
         # skip parens
         if name.endswith('()'):
             name = name[:-2]
@@ -1277,6 +1341,7 @@ class FortranDomain(Domain):
         searchorder = node.hasattr('refspecific') and 1 or 0
         matches = self.find_obj(env, modname, target, type, searchorder)
         if not matches:
+            #import pdb; pdb.set_trace()
             return None
         elif len(matches) > 1:
             # TODO: warnings fail to be sent, no such object
