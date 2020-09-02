@@ -82,6 +82,12 @@ Stephane Raynaud (stephane.raynaud(at)gmail.com)
 Thanks: Thomas Gastine and other pull request contributors.
 
 
+Maintainer
+----------
+
+Rob Cermak (rob.cermak@gmail.com)
+
+
 Documentation
 -------------
 
