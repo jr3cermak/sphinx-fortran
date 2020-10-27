@@ -36,7 +36,7 @@
 # knowledge of the CeCILL license and that you accept its terms.
 #
 
-__version__ = '1.2.1'
+__version__ = '1.2.2'
 __date__ = "2020-09-02"
 __author__ = 'Stephane Raynaud'
 __email__ = 'stephane.raynaud@gmail.com'
